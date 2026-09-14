@@ -1,0 +1,40 @@
+name: Build Custom eBUS Firmware
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mqtt-wss
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build INTERNAL firmware
+        run: pio run -e esp32-c3-internal
+
+      - name: Prepare firmware
+        run: |
+          mkdir -p output
+          cp .pio/build/esp32-c3-internal/firmware.bin \
+             output/firmware-HW_v5.x-internal-custom.bin
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: ebus-internal-custom
+          path: output/firmware-HW_v5.x-internal-custom.bin
