@@ -111,6 +111,9 @@ struct FirmwareStatus {
     auto scope = writer.objectScope();
     writer.writeField("version", AUTO_VERSION);
     writer.writeField("esp_idf_version", esp_get_idf_version());
+#if defined(EBUS_INTERNAL)
+    writer.writeField("mqtt_patch", "wss-r1");
+#endif
 #if !defined(EBUS_INTERNAL)
     writer.writeField("async", static_cast<bool>(USE_ASYNCHRONOUS));
     writer.writeField("software_serial",
@@ -229,6 +232,11 @@ struct MqttStatus {
     w.writeField("server", configManager.readString("mqttServer"));
     w.writeField("user", configManager.readString("mqttUser"));
     w.writeField("connected", mqtt.isConnected());
+    w.writeField("server_valid", mqtt.isServerValid());
+    w.writeField("transport", mqtt.getTransport());
+    w.writeField("tls_enabled", mqtt.usesTls());
+    w.writeField("tls_verification", mqtt.usesTls() ? "ca+hostname+expiry" : "none");
+    w.writeField("clock_initialized", Mqtt::isClockInitialized());
   }
 };
 
@@ -603,6 +611,7 @@ extern "C" void app_main(void) {
       std::string(configManager.readString("rootTopic", ""));
   mqtt.setEnabled(configManager.readBool("mqttEnabled"));
   mqtt.setup(unique_id);
+  // 1883 is only the fallback for a bare hostname; full URIs keep their port.
   mqtt.setServer(mqttServerValue.c_str(), 1883);
   mqtt.setCredentials(mqttUserValue.c_str(), mqttPassValue.c_str());
   if (!rootTopicValue.empty()) {
